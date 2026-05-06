@@ -63,4 +63,28 @@ CREATE TABLE team_members (
 );
 
 -- Future considerations (Do not implement APIs for these yet)
--- submissions, reviews
+-- reviews
+
+-- 7. submissions
+CREATE TABLE submissions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
+  hackathon_id UUID REFERENCES hackathons(id) ON DELETE CASCADE,
+  repo_url TEXT NOT NULL,
+  demo_url TEXT,
+  description TEXT,
+  status TEXT DEFAULT 'SUBMITTED',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(team_id, hackathon_id)
+);
+
+-- 8. judge_assignments
+CREATE TABLE judge_assignments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE,
+  judge_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'PENDING', -- PENDING, DONE
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(submission_id, judge_id)
+);

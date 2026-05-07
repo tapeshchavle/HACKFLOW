@@ -40,9 +40,11 @@ import type {
 function TeamsTab({
   hackathonId,
   role,
+  hasTeam,
 }: {
   hackathonId: string;
   role: string | null;
+  hasTeam: boolean;
 }) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ function TeamsTab({
 
   return (
     <div className="space-y-6">
-      {(role === "PARTICIPANT" || !role) && (
+      {((role === "PARTICIPANT" || !role) && !hasTeam) && (
         <form
           onSubmit={handleCreateTeam}
           className="flex items-end gap-3 p-4 rounded-xl border border-border bg-card"
@@ -470,7 +472,7 @@ export default function HackathonDetailPage() {
         </TabsList>
 
         <TabsContent value="teams">
-          <TeamsTab hackathonId={hackathonId} role={data.role} />
+          <TeamsTab hackathonId={hackathonId} role={data.role} hasTeam={data.hasTeam} />
         </TabsContent>
 
         <TabsContent value="invites">

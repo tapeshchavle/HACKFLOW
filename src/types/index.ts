@@ -98,6 +98,7 @@ export interface HackathonDashboard {
   submissionCount: number;
   judgeCount: number;
   participantCount: number;
+  hasTeam: boolean;
 }
 
 export interface TeamWithMembers extends Team {

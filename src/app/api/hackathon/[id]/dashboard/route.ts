@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { isInAnyTeam } from '@/lib/rbac';
 
 export async function GET(
   _req: Request,
@@ -21,14 +22,16 @@ export async function GET(
       teamCountResult,
       submissionCountResult,
       judgeCountResult,
-      participantCountResult
+      participantCountResult,
+      hasTeam
     ] = await Promise.all([
       supabase.from('hackathons').select('*').eq('id', hackathonId).single(),
       supabase.from('user_roles').select('role').eq('user_id', user.id).eq('hackathon_id', hackathonId).single(),
       supabase.from('teams').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId),
       supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId),
       supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId).eq('role', 'JUDGE'),
-      supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId).eq('role', 'PARTICIPANT')
+      supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId).eq('role', 'PARTICIPANT'),
+      isInAnyTeam(user.id, hackathonId)
     ]);
 
     const { data: hackathon, error: hackathonError } = hackathonResult;
@@ -50,6 +53,7 @@ export async function GET(
       submissionCount: submissionCount || 0,
       judgeCount: judgeCount || 0,
       participantCount: participantCount || 0,
+      hasTeam,
     });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/auth';
+import { hasRole } from '@/lib/rbac';
 import { runJudgeAssignment } from '@/lib/judgeAssignment';
 
 export async function POST(
@@ -7,6 +9,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: hackathonId } = await params;
     const { status: newStatus } = await req.json();
 
@@ -14,7 +21,11 @@ export async function POST(
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
-    // Usually you'd check auth + admin roles here...
+    // RBAC: Only ADMIN can update status
+    const isAdmin = await hasRole(user.id, hackathonId, ['ADMIN']);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden. Only admins can update hackathon status.' }, { status: 403 });
+    }
 
     const { data: hackathon, error: updateErr } = await supabase
       .from('hackathons')

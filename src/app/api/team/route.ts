@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { hasRole, isInAnyTeam } from '@/lib/rbac';
@@ -19,12 +19,6 @@ export async function POST(req: Request) {
     // Ensure they have PARTICIPANT role
     const isParticipant = await hasRole(user.id, hackathon_id, ['PARTICIPANT']);
     if (!isParticipant) {
-      // If no role at all, maybe we can auto-assign PARTICIPANT? 
-      // The prompt says "Only PARTICIPANT". So let's check or let them be created as participant.
-      // Easiest is to strictly check, or assign them if they have no role.
-      // Let's assume they must be assigned PARTICIPANT somehow, e.g. through a public registration endpoint.
-      // Wait, prompt: "No public join (participants only via team invite)". BUT how does a leader create a team then? Let's assume they were invited to the hackathon or the platform just assigns it if they create a team.
-      // Actually, if "No public join (participants only via team invite)", a leader might have been invited as a leader, OR they can create a team and that makes them a participant. Let's auto-assign PARTICIPANT if no role.
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('*')
@@ -76,6 +70,46 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ team }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const hackathonId = req.nextUrl.searchParams.get('hackathonId');
+    if (!hackathonId) {
+      return NextResponse.json({ error: 'Missing hackathonId parameter' }, { status: 400 });
+    }
+
+    // Fetch all teams for the hackathon
+    const { data: teams, error: teamsError } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('hackathon_id', hackathonId)
+      .order('created_at', { ascending: false });
+
+    if (teamsError) {
+      return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 });
+    }
+
+    // Get member counts
+    const teamsWithCounts = await Promise.all(
+      (teams || []).map(async (team) => {
+        const { count } = await supabase
+          .from('team_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('team_id', team.id);
+        return { ...team, member_count: count || 0 };
+      })
+    );
+
+    return NextResponse.json({ teams: teamsWithCounts });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

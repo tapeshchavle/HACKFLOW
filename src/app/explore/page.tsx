@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Compass, CheckCircle } from "lucide-react";
+import { useExploreHackathons } from "@/lib/api";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Hackathon } from "@/types";
@@ -14,36 +15,14 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 export default function ExplorePage() {
-  const [hackathons, setHackathons] = useState<Hackathon[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, error, isLoading } = useExploreHackathons();
+  const hackathons = data?.hackathons || [];
+  const loading = isLoading;
   const [enrolling, setEnrolling] = useState<string | null>(null);
   const [selectedHackathon, setSelectedHackathon] = useState<Hackathon | null>(null);
   const [teamName, setTeamName] = useState("");
   const { getToken } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = await getToken();
-        if (!token) return;
-
-        const res = await fetch("/api/hackathon/explore", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (!res.ok) throw new Error("Failed to fetch");
-        
-        const data = await res.json();
-        setHackathons(data.hackathons || []);
-      } catch (error) {
-        console.error("Failed to load available hackathons:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [getToken]);
 
   const handleEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,8 +131,8 @@ export default function ExplorePage() {
               <Button type="button" variant="outline" onClick={() => setSelectedHackathon(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!teamName.trim() || enrolling === selectedHackathon?.id}>
-                {enrolling === selectedHackathon?.id ? "Joining..." : "Join & Create Team"}
+              <Button type="submit" disabled={!teamName.trim() || enrolling === (selectedHackathon?.id ?? "")}>
+                {enrolling === (selectedHackathon?.id ?? "") ? "Joining..." : "Join & Create Team"}
               </Button>
             </DialogFooter>
           </form>

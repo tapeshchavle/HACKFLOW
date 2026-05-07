@@ -1,3 +1,4 @@
+import useSWR from "swr";
 import type {
   Hackathon,
   HackathonWithRole,
@@ -186,3 +187,36 @@ export async function getHackathonDashboard(
 ): Promise<HackathonDashboard> {
   return request(`hackathon/${id}/dashboard`, { method: "GET" });
 }
+
+// ─── SWR Hooks ───────────────────────────────────────────────────
+
+export function useHackathons() {
+  return useSWR("hackathon", () => listHackathons());
+}
+
+export function useExploreHackathons() {
+  return useSWR<{ hackathons: Hackathon[] }>("/api/hackathon/explore", (url: string) => 
+    fetch(url).then(res => {
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    })
+  );
+}
+
+export function useHackathonDashboard(id: string) {
+  return useSWR(id ? `hackathon/${id}/dashboard` : null, () => getHackathonDashboard(id));
+}
+
+export function useTeams(hackathonId: string) {
+  return useSWR(hackathonId ? `team?hackathonId=${hackathonId}` : null, () => listTeams(hackathonId));
+}
+
+export function useInvites(hackathonId: string) {
+  return useSWR(hackathonId ? `invite/list?hackathonId=${hackathonId}` : null, () => listInvites(hackathonId));
+}
+
+export function useTeam(id: string) {
+  return useSWR(id ? `team/${id}` : null, () => getTeam(id));
+}
+
+

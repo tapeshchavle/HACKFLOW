@@ -16,37 +16,35 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RoleBadge } from "@/components/status-badge";
 import { InviteDialog } from "@/components/invite-dialog";
 import { EmptyState } from "@/components/empty-state";
-import { getTeam, getMySubmission } from "@/lib/api";
+import { getTeam, getMySubmission, useTeam } from "@/lib/api";
 import type { TeamWithMembers, Submission } from "@/types";
 
 export default function TeamDetailPage() {
   const params = useParams();
   const teamId = params.id as string;
-  const [team, setTeam] = useState<TeamWithMembers | null>(null);
+  const { data: teamData, error: teamError, isLoading: teamLoading } = useTeam(teamId);
+  const team = teamData?.team;
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getTeam(teamId);
-        setTeam(data.team);
-
-        // Try to get submission for this team's hackathon
-        try {
-          const subData = await getMySubmission(data.team.hackathon_id);
-          setSubmission(subData.submission);
-        } catch {
-          // Not in this team or no submission
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
+    if (!teamLoading) {
         setLoading(false);
+    }
+  }, [teamLoading]);
+
+  useEffect(() => {
+    async function loadSubmission() {
+      if (!team) return;
+      try {
+        const subData = await getMySubmission(team.hackathon_id);
+        setSubmission(subData.submission);
+      } catch (e) {
+        // Not in this team or no submission
       }
     }
-    load();
-  }, [teamId]);
+    loadSubmission();
+  }, [team]);
 
   if (loading) {
     return (

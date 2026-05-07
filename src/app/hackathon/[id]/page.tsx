@@ -27,6 +27,9 @@ import {
   listInvites,
   updateHackathonStatus,
   createTeam,
+  useHackathonDashboard,
+  useTeams,
+  useInvites,
 } from "@/lib/api";
 import type {
   HackathonDashboard,
@@ -46,25 +49,14 @@ function TeamsTab({
   role: string | null;
   hasTeam: boolean;
 }) {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, error, isLoading } = useTeams(hackathonId);
+  const teams = data?.teams || [];
+  const loading = isLoading;
   const [creating, setCreating] = useState(false);
   const [teamName, setTeamName] = useState("");
   const router = useRouter();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listTeams(hackathonId);
-        setTeams(data.teams);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [hackathonId]);
+  const mutate = useTeams(hackathonId).mutate;
 
   async function handleCreateTeam(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +68,7 @@ function TeamsTab({
         name: teamName.trim(),
       });
       toast.success("Team created!");
-      setTeams((prev) => [{ ...result.team, member_count: 1 }, ...prev]);
+      mutate();
       setTeamName("");
     } catch (error: any) {
       toast.error(error.message || "Failed to create team");
@@ -163,22 +155,9 @@ function InvitesTab({
   hackathonId: string;
   role: string | null;
 }) {
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listInvites(hackathonId);
-        setInvites(data.invites);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [hackathonId]);
+  const { data, error, isLoading } = useInvites(hackathonId);
+  const invites = data?.invites || [];
+  const loading = isLoading;
 
   if (loading)
     return (
@@ -344,24 +323,16 @@ function SettingsTab({
 export default function HackathonDetailPage() {
   const params = useParams();
   const hackathonId = params.id as string;
+  const { data: dashboardData, error, isLoading } = useHackathonDashboard(hackathonId);
   const [data, setData] = useState<HackathonDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const result = await getHackathonDashboard(hackathonId);
-        setData(result);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
+    if (dashboardData) {
+      setData(dashboardData);
     }
-    load();
-  }, [hackathonId]);
+  }, [dashboardData]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
         <Skeleton className="h-10 w-64" />

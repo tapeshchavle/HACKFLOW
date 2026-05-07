@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Zap, Loader2 } from "lucide-react";
-import { listHackathons } from "@/lib/api";
+import { listHackathons, useHackathons } from "@/lib/api";
 import { HackathonCard } from "@/components/hackathon-card";
 import { CreateHackathonDialog } from "@/components/create-hackathon-dialog";
 import { EmptyState } from "@/components/empty-state";
@@ -10,22 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { HackathonWithRole } from "@/types";
 
 export default function DashboardPage() {
-  const [hackathons, setHackathons] = useState<HackathonWithRole[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listHackathons();
-        setHackathons(data.hackathons);
-      } catch (error) {
-        console.error("Failed to load hackathons:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const { data, error, isLoading } = useHackathons();
+  const hackathons = data?.hackathons || [];
+  const loading = isLoading;
 
   return (
     <div className="animate-fade-in">

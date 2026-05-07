@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { SWRProvider } from "@/components/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,7 +34,7 @@ export default function RootLayout({
         baseTheme: dark,
         variables: {
           colorPrimary: "#818cf8",
-          colorBackground: "#fefdfdff",
+          colorBackground: "#fcf5f5ff",
           colorText: "#f1f5f9",
           colorTextSecondary: "#94a3b8",
           colorInputBackground: "#1e293b",
@@ -62,17 +63,19 @@ export default function RootLayout({
       >
         <body className="min-h-full flex flex-col">
           <TooltipProvider>
-            {children}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: "oklch(0.2 0.02 270)",
-                  border: "1px solid oklch(0.3 0.02 270)",
-                  color: "oklch(0.96 0 0)",
-                },
-              }}
-            />
+            <SWRProvider>
+              {children}
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: "oklch(0.2 0.02 270)",
+                    border: "1px solid oklch(0.3 0.02 270)",
+                    color: "oklch(0.96 0 0)",
+                  },
+                }}
+              />
+            </SWRProvider>
           </TooltipProvider>
         </body>
       </html>

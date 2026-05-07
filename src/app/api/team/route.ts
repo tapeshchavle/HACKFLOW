@@ -98,16 +98,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 });
     }
 
-    // Get member counts
-    const teamsWithCounts = await Promise.all(
-      (teams || []).map(async (team) => {
-        const { count } = await supabase
-          .from('team_members')
-          .select('id', { count: 'exact', head: true })
-          .eq('team_id', team.id);
-        return { ...team, member_count: count || 0 };
-      })
-    );
+    if (!teams || teams.length === 0) {
+      return NextResponse.json({ teams: [] });
+    }
+
+    const teamIds = teams.map((t) => t.id);
+
+    // Fetch all members for these teams in a single query
+    const { data: members, error: membersError } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .in('team_id', teamIds);
+
+    if (membersError) {
+      return NextResponse.json({ error: 'Failed to fetch team members count' }, { status: 500 });
+    }
+
+    const memberCounts = (members || []).reduce((acc: Record<string, number>, curr) => {
+      acc[curr.team_id] = (acc[curr.team_id] || 0) + 1;
+      return acc;
+    }, {});
+
+    const teamsWithCounts = teams.map((team) => ({
+      ...team,
+      member_count: memberCounts[team.id] || 0,
+    }));
 
     return NextResponse.json({ teams: teamsWithCounts });
   } catch (error) {

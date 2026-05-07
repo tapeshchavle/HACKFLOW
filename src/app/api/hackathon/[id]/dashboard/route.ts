@@ -14,50 +14,34 @@ export async function GET(
 
     const { id: hackathonId } = await params;
 
-    // Fetch hackathon
-    const { data: hackathon, error: hackathonError } = await supabase
-      .from('hackathons')
-      .select('*')
-      .eq('id', hackathonId)
-      .single();
+    // Execute all independent queries in parallel
+    const [
+      hackathonResult,
+      roleResult,
+      teamCountResult,
+      submissionCountResult,
+      judgeCountResult,
+      participantCountResult
+    ] = await Promise.all([
+      supabase.from('hackathons').select('*').eq('id', hackathonId).single(),
+      supabase.from('user_roles').select('role').eq('user_id', user.id).eq('hackathon_id', hackathonId).single(),
+      supabase.from('teams').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId),
+      supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId),
+      supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId).eq('role', 'JUDGE'),
+      supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('hackathon_id', hackathonId).eq('role', 'PARTICIPANT')
+    ]);
+
+    const { data: hackathon, error: hackathonError } = hackathonResult;
 
     if (hackathonError || !hackathon) {
       return NextResponse.json({ error: 'Hackathon not found' }, { status: 404 });
     }
 
-    // User's role
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('hackathon_id', hackathonId)
-      .single();
-
-    // Team count
-    const { count: teamCount } = await supabase
-      .from('teams')
-      .select('id', { count: 'exact', head: true })
-      .eq('hackathon_id', hackathonId);
-
-    // Submission count
-    const { count: submissionCount } = await supabase
-      .from('submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('hackathon_id', hackathonId);
-
-    // Judge count
-    const { count: judgeCount } = await supabase
-      .from('user_roles')
-      .select('id', { count: 'exact', head: true })
-      .eq('hackathon_id', hackathonId)
-      .eq('role', 'JUDGE');
-
-    // Participant count
-    const { count: participantCount } = await supabase
-      .from('user_roles')
-      .select('id', { count: 'exact', head: true })
-      .eq('hackathon_id', hackathonId)
-      .eq('role', 'PARTICIPANT');
+    const roleData = roleResult.data;
+    const teamCount = teamCountResult.count;
+    const submissionCount = submissionCountResult.count;
+    const judgeCount = judgeCountResult.count;
+    const participantCount = participantCountResult.count;
 
     return NextResponse.json({
       hackathon,

@@ -7,12 +7,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Hackathon } from "@/types";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 export default function ExplorePage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [selectedHackathon, setSelectedHackathon] = useState<Hackathon | null>(null);
+  const [teamName, setTeamName] = useState("");
   const { getToken } = useAuth();
   const router = useRouter();
 
@@ -39,9 +45,12 @@ export default function ExplorePage() {
     load();
   }, [getToken]);
 
-  const handleEnroll = async (hackathonId: string) => {
+  const handleEnroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedHackathon || !teamName.trim()) return;
+
     try {
-      setEnrolling(hackathonId);
+      setEnrolling(selectedHackathon.id);
       const token = await getToken();
       const res = await fetch("/api/hackathon/enroll", {
         method: "POST",
@@ -49,7 +58,7 @@ export default function ExplorePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}` 
         },
-        body: JSON.stringify({ hackathonId })
+        body: JSON.stringify({ hackathonId: selectedHackathon.id, teamName: teamName.trim() })
       });
 
       if (!res.ok) {
@@ -57,7 +66,9 @@ export default function ExplorePage() {
         throw new Error(data.error || "Failed to enroll");
       }
 
-      toast.success("Successfully enrolled!");
+      toast.success("Successfully enrolled and created team!");
+      setSelectedHackathon(null);
+      setTeamName("");
       router.push("/dashboard");
     } catch (error: any) {
         toast.error(error.message);
@@ -100,7 +111,7 @@ export default function ExplorePage() {
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{h.description || "No description provided."}</p>
               </div>
               <button 
-                onClick={() => handleEnroll(h.id)}
+                onClick={() => setSelectedHackathon(h)}
                 disabled={enrolling === h.id}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                >
@@ -115,6 +126,39 @@ export default function ExplorePage() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!selectedHackathon} onOpenChange={(open) => !open && setSelectedHackathon(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join Hackathon</DialogTitle>
+            <DialogDescription>
+              To join this hackathon, please create a new team. You can invite other members to your team later.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEnroll}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Team Name</Label>
+                <Input
+                  id="name"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="e.g. Code Ninjas"
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setSelectedHackathon(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!teamName.trim() || enrolling === selectedHackathon?.id}>
+                {enrolling === selectedHackathon?.id ? "Joining..." : "Join & Create Team"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

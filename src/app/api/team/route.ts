@@ -16,6 +16,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Ensure team name is unique for this hackathon
+    const { data: existingTeam } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('hackathon_id', hackathon_id)
+      .ilike('name', name)
+      .single();
+
+    if (existingTeam) {
+      return NextResponse.json({ error: 'A team with this name already exists in this hackathon. Please try another name.' }, { status: 400 });
+    }
+
     // Ensure they have PARTICIPANT role
     const isParticipant = await hasRole(user.id, hackathon_id, ['PARTICIPANT']);
     if (!isParticipant) {
